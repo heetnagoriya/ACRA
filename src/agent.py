@@ -5,36 +5,15 @@ from langchain_core.tools import tool
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
 
+from aws_tools import fetch_ec2_instances, fetch_cloudwatch_logs, restart_ec2_instance, send_slack_notification
+
 # Load environment variables (API Key)
 load_dotenv()
 
 # ==========================================
 # 1. Define the Tools (The "Hands" of ACRA)
 # ==========================================
-
-@tool
-def fetch_cloudwatch_logs(instance_id: str) -> str:
-    """Fetches the recent logs for a given EC2 instance. Use this to diagnose problems."""
-    print(f"[TOOL EXECUTION] Fetching logs for {instance_id}...")
-    # Mocking a log response for Phase 1
-    if instance_id == "i-1234567890abcdef0":
-        return "ERROR: Memory exhausted. Process 'java' killed by OOM killer."
-    return "Logs normal. No errors found."
-
-@tool
-def restart_ec2_instance(instance_id: str) -> str:
-    """Restarts an EC2 instance. Use this if a process is completely stuck or out of memory."""
-    print(f"[TOOL EXECUTION] Issuing restart command to {instance_id}...")
-    # Mocking a successful restart
-    return f"Successfully restarted {instance_id}."
-
-@tool
-def send_slack_notification(message: str) -> str:
-    """Sends a notification to the engineering team via Slack."""
-    print(f"[TOOL EXECUTION] Sending Slack message: {message}")
-    return "Message sent."
-
-tools = [fetch_cloudwatch_logs, restart_ec2_instance, send_slack_notification]
+tools = [fetch_ec2_instances, fetch_cloudwatch_logs, restart_ec2_instance, send_slack_notification]
 
 # ==========================================
 # 2. Initialize the LLM (The "Brain" of ACRA)
