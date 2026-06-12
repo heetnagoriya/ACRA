@@ -41,7 +41,7 @@ tools = [fetch_cloudwatch_logs, restart_ec2_instance, send_slack_notification]
 # ==========================================
 # We use gemini-1.5-flash as it is fast, free, and great at function calling.
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     temperature=0, # We want deterministic, logical answers, not creative ones
 )
 
