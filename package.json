@@ -1,0 +1,10 @@
+{
+  "name": "acra-agent",
+  "version": "1.0.0",
+  "description": "Autonomous Cloud Remediation Agent",
+  "dependencies": {},
+  "devDependencies": {
+    "serverless": "^3.39.0",
+    "serverless-python-requirements": "^6.0.0"
+  }
+}

@@ -1,0 +1,48 @@
+service: acra
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  timeout: 60 # Give the agent up to 60 seconds to think and act
+  environment:
+    GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
+  iam:
+    role:
+      statements:
+        # Give the Lambda permission to read EC2 instances
+        - Effect: "Allow"
+          Action:
+            - "ec2:DescribeInstances"
+            - "ec2:DescribeInstanceStatus"
+          Resource: "*"
+        # Give the Lambda permission to read CloudWatch logs
+        - Effect: "Allow"
+          Action:
+            - "logs:GetLogEvents"
+            - "logs:DescribeLogStreams"
+          Resource: "arn:aws:logs:*:*:log-group:*"
+        # Give the Lambda permission to restart instances
+        - Effect: "Allow"
+          Action:
+            - "ec2:RebootInstances"
+          Resource: "*"
+
+functions:
+  agent:
+    handler: src/agent.lambda_handler
+    # Example EventBridge trigger: This will run the lambda on any CloudWatch Alarm state change
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - aws.cloudwatch
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false # Set to true if deploying from Windows/Mac and getting binary architecture issues
