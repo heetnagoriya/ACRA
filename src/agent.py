@@ -8,6 +8,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from aws_tools import fetch_ec2_instances, fetch_cloudwatch_logs, restart_ec2_instance, send_slack_notification
 from aws_security_tools import analyze_s3_bucket_policy, remediate_s3_public_access, analyze_security_groups
 from aws_storage_tools import analyze_disk_usage_logs, archive_logs_to_s3
+from aws_database_tools import triage_sqs_dlq, clear_database_connections
+from aws_governance_tools import log_audit_trail_dynamodb, request_human_approval
 
 # Load environment variables (API Key)
 load_dotenv()
@@ -24,7 +26,11 @@ tools = [
     remediate_s3_public_access,
     analyze_security_groups,
     analyze_disk_usage_logs,
-    archive_logs_to_s3
+    archive_logs_to_s3,
+    triage_sqs_dlq,
+    clear_database_connections,
+    log_audit_trail_dynamodb,
+    request_human_approval
 ]
 
 # ==========================================
@@ -42,8 +48,12 @@ llm = ChatGoogleGenerativeAI(
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are ACRA (Autonomous Cloud Remediation Agent), an intelligent DevOps and Security assistant. "
                "You receive alerts about system or security issues. Your job is to investigate using the tools provided, "
-               "take necessary remediation actions safely, and finally notify the team about what you did. "
-               "If archiving logs, you can use the bucket 'acra-cold-storage-archive'."),
+               "take necessary remediation actions safely, and finally notify the team about what you did.\n\n"
+               "CRITICAL SAFETY PROTOCOLS:\n"
+               "1. You MUST call `log_audit_trail_dynamodb` for every major action you take.\n"
+               "2. If you are about to take a DESTRUCTIVE or HIGH-RISK action (like restarting a server, terminating database connections, or deleting/archiving data), "
+               "you MUST call `request_human_approval` BEFORE executing the action. If approved, you may proceed. If rejected, do not proceed.\n"
+               "3. Always send a final slack notification when done."),
     ("human", "{input}"),
     ("placeholder", "{agent_scratchpad}"),
 ])
@@ -84,14 +94,14 @@ def lambda_handler(event, context):
 
 # Local testing block
 if __name__ == "__main__":
-    # Simulate a fake EventBridge storage event
-    mock_storage_event = {
+    # Simulate a fake EventBridge event requiring human approval
+    mock_critical_event = {
         "source": "aws.cloudwatch",
         "detail": {
-            "alarmName": "Disk-Space-Critical-AppServer",
+            "alarmName": "Critical-Web-Server-Crash",
             "configuration": {
-                "description": "CloudWatch detected that disk space on EC2 Instance i-99988877766655544 has reached 95%. Investigate what is taking up space and archive if it is logs."
+                "description": "CloudWatch detected that the core web server EC2 Instance i-1234567890abcdef0 is unresponsive and the memory is exhausted. Investigate and remediate."
             }
         }
     }
-    lambda_handler(mock_storage_event, None)
+    lambda_handler(mock_critical_event, None)
