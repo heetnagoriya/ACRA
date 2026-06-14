@@ -1,11 +1,12 @@
 service: acra
 
 frameworkVersion: '3'
+useDotenv: true
 
 provider:
   name: aws
   runtime: python3.11
-  region: us-east-1
+  region: ap-south-1
   timeout: 60 # Give the agent up to 60 seconds to think and act
   environment:
     GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
@@ -30,6 +31,14 @@ provider:
             - "ec2:RebootInstances"
           Resource: "*"
 
+# Exclude large local folders so we don't hit the AWS Lambda 250MB limit
+package:
+  patterns:
+    - '!venv/**'
+    - '!node_modules/**'
+    - '!.git/**'
+    - '!.gemini/**'
+
 functions:
   agent:
     handler: src/agent.lambda_handler
@@ -45,4 +54,7 @@ plugins:
 
 custom:
   pythonRequirements:
+    pythonBin: python3 # Use the local python3 instead of specifically looking for python3.11
     dockerizePip: false # Set to true if deploying from Windows/Mac and getting binary architecture issues
+    zip: true # Zip the dependencies to save space and stay under the 250MB limit
+    slim: true # Remove unnecessary files like tests and unused module code
