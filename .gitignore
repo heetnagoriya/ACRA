@@ -1,1 +1,16 @@
+# Environment variables - NEVER commit this
 .env
+
+# Virtual environment
+venv/
+
+# Serverless Framework deployment artifacts - contains resolved secrets
+.serverless/
+
+# Node modules
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
