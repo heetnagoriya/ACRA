@@ -7,6 +7,7 @@ provider:
   name: aws
   runtime: python3.11
   region: ap-south-1
+  architecture: arm64 # Use Graviton2 - matches Apple Silicon Mac builds naturally, 20% cheaper & faster
   timeout: 60 # Give the agent up to 60 seconds to think and act
   environment:
     GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
@@ -54,7 +55,7 @@ plugins:
 
 custom:
   pythonRequirements:
-    pythonBin: python3 # Use the local python3 instead of specifically looking for python3.11
-    dockerizePip: false # Set to true if deploying from Windows/Mac and getting binary architecture issues
-    zip: true # Zip the dependencies to save space and stay under the 250MB limit
-    slim: true # Remove unnecessary files like tests and unused module code
+    pythonBin: python3
+    dockerizePip: true # Docker builds for linux/arm64 on Apple Silicon - matches Lambda arm64 perfectly
+    zip: true
+    slim: true

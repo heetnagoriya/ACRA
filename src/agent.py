@@ -4,6 +4,10 @@ except ImportError:
     pass
 
 import os
+import sys
+# Add the src/ directory to path so Lambda can find aws_tools, aws_security_tools, etc.
+sys.path.insert(0, os.path.dirname(__file__))
+
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
@@ -15,6 +19,7 @@ from aws_security_tools import analyze_s3_bucket_policy, remediate_s3_public_acc
 from aws_storage_tools import analyze_disk_usage_logs, archive_logs_to_s3
 from aws_database_tools import triage_sqs_dlq, clear_database_connections
 from aws_governance_tools import log_audit_trail_dynamodb, request_human_approval
+from aws_cost_tools import analyze_idle_resources, terminate_idle_resources
 
 # Load environment variables (API Key)
 load_dotenv()
@@ -35,7 +40,9 @@ tools = [
     triage_sqs_dlq,
     clear_database_connections,
     log_audit_trail_dynamodb,
-    request_human_approval
+    request_human_approval,
+    analyze_idle_resources,
+    terminate_idle_resources
 ]
 
 # ==========================================
@@ -99,14 +106,14 @@ def lambda_handler(event, context):
 
 # Local testing block
 if __name__ == "__main__":
-    # Simulate a fake EventBridge event requiring human approval
-    mock_critical_event = {
-        "source": "aws.cloudwatch",
+    # Simulate a fake EventBridge Cost Anomaly event
+    mock_cost_event = {
+        "source": "aws.costexplorer",
         "detail": {
-            "alarmName": "Critical-Web-Server-Crash",
+            "alarmName": "Cost-Anomaly-Detected",
             "configuration": {
-                "description": "CloudWatch detected that the core web server EC2 Instance i-1234567890abcdef0 is unresponsive and the memory is exhausted. Investigate and remediate."
+                "description": "AWS Cost Explorer detected that the projected monthly bill will exceed the $5,000 budget by 20%. Please analyze the environment for idle resources and clean them up to save money."
             }
         }
     }
-    lambda_handler(mock_critical_event, None)
+    lambda_handler(mock_cost_event, None)
