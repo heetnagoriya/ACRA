@@ -20,6 +20,7 @@ from aws_storage_tools import analyze_disk_usage_logs, archive_logs_to_s3
 from aws_database_tools import triage_sqs_dlq, clear_database_connections
 from aws_governance_tools import log_audit_trail_dynamodb, request_human_approval
 from aws_cost_tools import analyze_idle_resources, terminate_idle_resources
+from aws_prediction_tools import get_resource_metrics_trend, predict_time_to_failure
 
 # Load environment variables (API Key)
 load_dotenv()
@@ -42,7 +43,9 @@ tools = [
     log_audit_trail_dynamodb,
     request_human_approval,
     analyze_idle_resources,
-    terminate_idle_resources
+    terminate_idle_resources,
+    get_resource_metrics_trend,
+    predict_time_to_failure
 ]
 
 # ==========================================
@@ -65,7 +68,10 @@ prompt = ChatPromptTemplate.from_messages([
                "1. You MUST call `log_audit_trail_dynamodb` for every major action you take.\n"
                "2. If you are about to take a DESTRUCTIVE or HIGH-RISK action (like restarting a server, terminating database connections, or deleting/archiving data), "
                "you MUST call `request_human_approval` BEFORE executing the action. If approved, you may proceed. If rejected, do not proceed.\n"
-               "3. Always send a final slack notification when done."),
+               "3. Always send a final slack notification when done.\n"
+               "4. PREDICTIVE FAILURE PROTOCOL: If you receive a 'Predictive-CPU-Spike' or 'Trending-Metric-Warning' alert, "
+               "FIRST call `get_resource_metrics_trend` to confirm the trend, THEN call `predict_time_to_failure` to generate a full report, "
+               "THEN request human approval before any pre-emptive restart."),
     ("human", "{input}"),
     ("placeholder", "{agent_scratchpad}"),
 ])
@@ -106,14 +112,39 @@ def lambda_handler(event, context):
 
 # Local testing block
 if __name__ == "__main__":
-    # Simulate a fake EventBridge Cost Anomaly event
-    mock_cost_event = {
-        "source": "aws.costexplorer",
-        "detail": {
-            "alarmName": "Cost-Anomaly-Detected",
-            "configuration": {
-                "description": "AWS Cost Explorer detected that the projected monthly bill will exceed the $5,000 budget by 20%. Please analyze the environment for idle resources and clean them up to save money."
+    import sys
+
+    # Allow selecting which scenario to test via CLI arg:
+    # python src/agent.py cost       -> Cost anomaly scenario (default)
+    # python src/agent.py prediction -> Predictive failure scenario
+    scenario = sys.argv[1] if len(sys.argv) > 1 else "cost"
+
+    if scenario == "prediction":
+        # Phase 10 – Predictive Failure Analysis demo
+        mock_prediction_event = {
+            "source": "aws.cloudwatch",
+            "detail": {
+                "alarmName": "Predictive-CPU-Spike",
+                "configuration": {
+                    "description": (
+                        "CloudWatch anomaly detection indicates that EC2 instance "
+                        "i-prod-web-server-01 is trending toward 100% CPU utilization. "
+                        "Analyze the metric trend, generate a failure prediction report, "
+                        "and recommend a pre-emptive remediation action."
+                    )
+                }
             }
         }
-    }
-    lambda_handler(mock_cost_event, None)
+        lambda_handler(mock_prediction_event, None)
+    else:
+        # Phase 9 – Cost Anomaly demo
+        mock_cost_event = {
+            "source": "aws.costexplorer",
+            "detail": {
+                "alarmName": "Cost-Anomaly-Detected",
+                "configuration": {
+                    "description": "AWS Cost Explorer detected that the projected monthly bill will exceed the $5,000 budget by 20%. Please analyze the environment for idle resources and clean them up to save money."
+                }
+            }
+        }
+        lambda_handler(mock_cost_event, None)
